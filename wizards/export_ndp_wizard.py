@@ -20,20 +20,13 @@ class ExportNDPWizard(models.TransientModel):
             # Agrega más mapeos si hay otras unidades en el sistema
         }
 
-        # Forzar recomputo de todos los campos computados
-        self.product_ids.invalidate_cache(
-            fnames=[
-                "ndp_nombre_producto",
-                "ndp_precio_publico_moneda",
-                "ndp_precio_mayorista_moneda",
-                "ndp_iva_porcentaje",
-                "ndp_cotizacion_dolar",
-                "ndp_precio_publico_pesos",
-                "ndp_precio_mayorista_pesos",
-                "ndp_stock",
-            ],
-            ids=self.product_ids.ids,
-        )
+        # Forzar recomputo de campos computados para productos seleccionados
+        for product in self.product_ids:
+            product._compute_nombre_producto()
+            product._compute_precios()
+            product._compute_precios_pesos()
+            product._compute_cotizacion_dolar()
+            product._compute_stock()
 
         output = io.StringIO()
         writer = csv.writer(output, delimiter="|")
