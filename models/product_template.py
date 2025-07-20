@@ -8,7 +8,7 @@ class ProductTemplate(models.Model):
     # Campos NDP (prefijo ndp_ para evitar conflictos)
     ndp_rubro = fields.Char(string="Rubro")
     ndp_nombre_rubro = fields.Char(string="Nombre del Rubro")
-    ndp_sku = fields.Char(string="SKU (Código SIEL)", required=True)  # Clave para match
+    ndp_sku = fields.Char(string="SKU (Código SIEL)")  # Clave para match
     ndp_nombre_producto = fields.Char(
         string="Nombre Producto", compute="_compute_nombre_producto", store=True
     )
@@ -141,19 +141,32 @@ class ProductTemplate(models.Model):
                 rec.ndp_precio_publico_pesos = rec.ndp_precio_publico_moneda
                 rec.ndp_precio_mayorista_pesos = rec.ndp_precio_mayorista_moneda
 
-    @api.depends_context("company")
+    @api.depends("company_id")
     def _compute_cotizacion_dolar(self):
         usd = self.env.ref("base.USD")
         ars = self.env.ref("base.ARS")
-        rate = self.env["res.currency.rate"].search(
-            [("currency_id", "=", usd.id), ("company_id", "=", self.env.company.id)],
-            limit=1,
-            order="name desc",
-        )
         for rec in self:
-            rec.ndp_cotizacion_dolar = (
-                rate.rate if rate else 1.0
-            )  # O fallback a API externa si querés
+            # Buscar la tasa para la compañía del registro
+            rate = self.env["res.currency.rate"].search(
+                [("currency_id", "=", usd.id), ("company_id", "=", rec.company_id.id)],
+                limit=1,
+                order="name desc",
+            )
+            if not rate or not rate.rate or rate.rate <= 0:
+                # Fallback: buscar tasa sin restringir por compañía
+                rate = self.env["res.currency.rate"].search(
+                    [("currency_id", "=", usd.id)],
+                    limit=1,
+                    order="name desc",
+                )
+            # Asignar el valor: tasa válida, o 1.0 como fallback
+            rec.ndp_cotizacion_dolar = rate.rate if rate and rate.rate > 0 else 1.0
+            # Log para depuración
+            if not rate or not rate.rate or rate.rate <= 0:
+                _logger.warning(
+                    f"No se encontró una tasa válida para USD en la compañía {rec.company_id.name}. "
+                    f"Usando valor por defecto: 1.0"
+                )
 
     @api.depends("qty_available")
     def _compute_stock(self):
