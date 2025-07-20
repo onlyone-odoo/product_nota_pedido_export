@@ -43,7 +43,7 @@ class ProductTemplate(models.Model):
         string="Cotización Dólar", compute="_compute_cotizacion_dolar", store=True
     )
     ndp_stock = fields.Float(string="Stock", compute="_compute_stock", store=True)
-    ndp_costo = fields.Float(string="Costo", related="standard_price")
+    ndp_costo = fields.Float(string="Costo", related="replenishment_cost")
     ndp_pto_pedido = fields.Float(string="Pto Pedido", related="reordering_min_qty")
     ndp_url_web = fields.Char(string="URL Web")
     ndp_ultimo_cambio_costo = fields.Date(string="Último Cambio Costo")

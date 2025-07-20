@@ -36,6 +36,12 @@ class ExportNDPWizard(models.TransientModel):
                 uom_mapping.get(product.ndp_unidad_medida, product.ndp_unidad_medida)
                 or ""
             )
+            codigo_barra = (
+                product.ndp_codigo_barra
+                if product.ndp_codigo_barra and product.ndp_codigo_barra != "0"
+                else ""
+            )
+
             writer.writerow(
                 [
                     product.ndp_rubro or "",
@@ -47,15 +53,15 @@ class ExportNDPWizard(models.TransientModel):
                     product.ndp_nombre_area or "",
                     f"{product.ndp_precio_publico_moneda:.3f}",
                     f"{product.ndp_precio_mayorista_moneda:.3f}",
-                    f"{product.ndp_iva_porcentaje:.1f}",
+                    f"{product.ndp_iva_porcentaje:.0f}",
                     unidad_medida,
                     product.ndp_nombre_foto or "",
-                    product.ndp_codigo_barra or "",
+                    codigo_barra,
                     product.ndp_moneda or "",
                     f"{product.ndp_precio_publico_pesos:.3f}",
                     f"{product.ndp_precio_mayorista_pesos:.3f}",
                     f"{product.ndp_cotizacion_dolar:.3f}",
-                    f"{product.ndp_stock:.3f}",
+                    f"{product.ndp_stock:.0f}",
                     f"{product.ndp_costo:.3f}",
                     f"{product.ndp_pto_pedido:.3f}",
                     product.ndp_url_web or "",
