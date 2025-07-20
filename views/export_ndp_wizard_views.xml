@@ -27,5 +27,7 @@
               name="Exportar CSV NDP"
               parent="stock.menu_stock_config_settings"
               action="action_export_ndp_wizard"
-              sequence="10"/>
+              sequence="10"
+              groups="stock.group_stock_manager"/>
+
 </odoo>
