@@ -2,12 +2,16 @@
 from odoo import models, fields
 import csv
 import io
+import base64  # Agrega este import
 
 
 class ExportNDPWizard(models.TransientModel):
     _name = "export.ndp.wizard"
 
     product_ids = fields.Many2many("product.template", string="Productos a Exportar")
+    datas = fields.Binary(
+        string="CSV Data", attachment=True
+    )  # Campo temporal para el CSV
 
     def generate_csv(self):
         output = io.StringIO()
@@ -41,9 +45,10 @@ class ExportNDPWizard(models.TransientModel):
                 ]
             )
         data = output.getvalue().encode("utf-8")
+        self.datas = base64.b64encode(data)  # Encode y guarda en el campo Binary
         return {
             "type": "ir.actions.act_url",
             "url": "/web/content/?model=%s&id=%s&field=datas&download=true&filename=ndp_export.csv"
             % (self._name, self.id),
             "target": "self",
-        }  # O adjuntalo como attachment
+        }
