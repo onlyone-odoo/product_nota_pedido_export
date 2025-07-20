@@ -19,10 +19,10 @@ class ProductTemplate(models.Model):
     ndp_codigo_area = fields.Char(string="Código de Área")
     ndp_nombre_area = fields.Char(string="Nombre del Área")
     ndp_precio_publico_moneda = fields.Float(
-        string="Precio Público (Moneda)", compute="_compute_precios"
+        string="Precio Público (Moneda)", compute="_compute_precios", store=True
     )
     ndp_precio_mayorista_moneda = fields.Float(
-        string="Precio Mayorista (Moneda)", compute="_compute_precios"
+        string="Precio Mayorista (Moneda)", compute="_compute_precios", store=True
     )
     ndp_iva_porcentaje = fields.Float(
         string="% IVA", related="taxes_id.amount", store=True
@@ -34,15 +34,15 @@ class ProductTemplate(models.Model):
         [("DO", "Dólar"), ("PE", "Pesos")], string="Moneda", default="PE"
     )
     ndp_precio_publico_pesos = fields.Float(
-        string="Precio Público $", compute="_compute_precios_pesos"
+        string="Precio Público $", compute="_compute_precios_pesos", store=True
     )
     ndp_precio_mayorista_pesos = fields.Float(
-        string="Precio Mayorista $", compute="_compute_precios_pesos"
+        string="Precio Mayorista $", compute="_compute_precios_pesos", store=True
     )
     ndp_cotizacion_dolar = fields.Float(
-        string="Cotización Dólar", compute="_compute_cotizacion_dolar"
+        string="Cotización Dólar", compute="_compute_cotizacion_dolar", store=True
     )
-    ndp_stock = fields.Float(string="Stock", compute="_compute_stock")
+    ndp_stock = fields.Float(string="Stock", compute="_compute_stock", store=True)
     ndp_costo = fields.Float(string="Costo", related="standard_price")
     ndp_pto_pedido = fields.Float(string="Pto Pedido", related="reordering_min_qty")
     ndp_url_web = fields.Char(string="URL Web")
@@ -54,9 +54,6 @@ class ProductTemplate(models.Model):
         for rec in self:
             rec.ndp_nombre_producto = rec.name
 
-    @api.depends(
-        "list_price",
-    )
     @api.depends("list_price")
     def _compute_precios(self):
         publico_pricelist_usd = self.env["product.pricelist"].search(
@@ -147,16 +144,12 @@ class ProductTemplate(models.Model):
     @api.depends("company_id")
     def _compute_cotizacion_dolar(self):
         _logger.info(
-            f"Se esta ejecutando _compute_cotizacion_dolar esto es self: {self}. "
+            f"Se esta ejecutando _compute_cotizacion_dolar esto es self: {self}"
         )
         usd = self.env.ref("base.USD")
-        _logger.info(
-            f"Se esta ejecutando _compute_cotizacion_dolar esto es usd: {usd}. "
-        )
+        _logger.info(f"Se esta ejecutando _compute_cotizacion_dolar esto es usd: {usd}")
         ars = self.env.ref("base.ARS")
-        _logger.info(
-            f"Se esta ejecutando _compute_cotizacion_dolar esto es ars: {ars}. "
-        )
+        _logger.info(f"Se esta ejecutando _compute_cotizacion_dolar esto es ars: {ars}")
         for rec in self:
             # Buscar la tasa para la compañía del registro
             rate = self.env["res.currency.rate"].search(
@@ -165,20 +158,22 @@ class ProductTemplate(models.Model):
                 order="name desc",
             )
             _logger.info(
-                f"Se esta ejecutando _compute_cotizacion_dolar esto es rate: {rate}. "
+                f"Se esta ejecutando _compute_cotizacion_dolar esto es rate: {rate}"
             )
+            if rate:
+                _logger.info(f"Valor de rate.rate: {rate.rate}")
+            # Determinar el valor a asignar
+            new_value = rate.rate if rate and rate.rate and rate.rate > 0 else 1.0
+            _logger.info(f"Asignando ndp_cotizacion_dolar para {rec.id}: {new_value}")
+            # Forzar la escritura del valor
+            rec.ndp_cotizacion_dolar = new_value
+            # Verificar si el valor se escribió correctamente
+            _logger.info(
+                f"Valor final de ndp_cotizacion_dolar para {rec.id}: {rec.ndp_cotizacion_dolar}"
+            )
+            # Log si se usa el fallback
             if not rate or not rate.rate or rate.rate <= 0:
-                # Fallback: buscar tasa sin restringir por compañía
-                rate = self.env["res.currency.rate"].search(
-                    [("currency_id", "=", usd.id)],
-                    limit=1,
-                    order="name desc",
-                )
-            # Asignar el valor: tasa válida, o 1.0 como fallback
-            rec.ndp_cotizacion_dolar = rate.rate if rate and rate.rate > 0 else 1.0
-            # Log para depuración
-            if not rate or not rate.rate or rate.rate <= 0:
-                _logger.info(
+                _logger.warning(
                     f"No se encontró una tasa válida para USD en la compañía {rec.company_id.name}. "
                     f"Usando valor por defecto: 1.0"
                 )
