@@ -8,12 +8,13 @@
     "website": "https://onlyone.odoo.com/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "17.0.1.0.0",
+    "version": "17.0.3.2.0",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
     "depends": ["product"],
     "data": [
-        "views/product_template_views.xml",
+        "views/product_views.xml",
+        "views/export_ndp_wizard_views.xml",
     ],
 }
