@@ -12,7 +12,7 @@
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
-    "depends": ["product"],
+    "depends": ["product", "stock", "account"],
     "data": [
         "views/product_views.xml",
         "views/export_ndp_wizard_views.xml",
