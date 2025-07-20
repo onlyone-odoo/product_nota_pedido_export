@@ -1,5 +1,8 @@
 # models/product_template.py
 from odoo import models, fields, api
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class ProductTemplate(models.Model):
@@ -143,14 +146,26 @@ class ProductTemplate(models.Model):
 
     @api.depends("company_id")
     def _compute_cotizacion_dolar(self):
+        _logger.info(
+            f"Se esta ejecutando _compute_cotizacion_dolar esto es self: {self}. "
+        )
         usd = self.env.ref("base.USD")
+        _logger.info(
+            f"Se esta ejecutando _compute_cotizacion_dolar esto es usd: {usd}. "
+        )
         ars = self.env.ref("base.ARS")
+        _logger.info(
+            f"Se esta ejecutando _compute_cotizacion_dolar esto es ars: {ars}. "
+        )
         for rec in self:
             # Buscar la tasa para la compañía del registro
             rate = self.env["res.currency.rate"].search(
                 [("currency_id", "=", usd.id), ("company_id", "=", rec.company_id.id)],
                 limit=1,
                 order="name desc",
+            )
+            _logger.info(
+                f"Se esta ejecutando _compute_cotizacion_dolar esto es rate: {rate}. "
             )
             if not rate or not rate.rate or rate.rate <= 0:
                 # Fallback: buscar tasa sin restringir por compañía
@@ -163,7 +178,7 @@ class ProductTemplate(models.Model):
             rec.ndp_cotizacion_dolar = rate.rate if rate and rate.rate > 0 else 1.0
             # Log para depuración
             if not rate or not rate.rate or rate.rate <= 0:
-                _logger.warning(
+                _logger.info(
                     f"No se encontró una tasa válida para USD en la compañía {rec.company_id.name}. "
                     f"Usando valor por defecto: 1.0"
                 )
