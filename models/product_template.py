@@ -161,9 +161,15 @@ class ProductTemplate(models.Model):
                 f"Se esta ejecutando _compute_cotizacion_dolar esto es rate: {rate}"
             )
             if rate:
-                _logger.info(f"Valor de rate.rate: {rate.rate}")
-            # Determinar el valor a asignar
-            new_value = rate.rate if rate and rate.rate and rate.rate > 0 else 1.0
+                _logger.info(
+                    f"Valor de rate.rate: {rate.rate}, inverse_company_rate: {rate.inverse_company_rate}"
+                )
+            # Determinar el valor a asignar usando inverse_company_rate
+            new_value = (
+                rate.inverse_company_rate
+                if rate and rate.inverse_company_rate and rate.inverse_company_rate > 0
+                else 1.0
+            )
             _logger.info(f"Asignando ndp_cotizacion_dolar para {rec.id}: {new_value}")
             # Forzar la escritura del valor
             rec.ndp_cotizacion_dolar = new_value
@@ -172,7 +178,11 @@ class ProductTemplate(models.Model):
                 f"Valor final de ndp_cotizacion_dolar para {rec.id}: {rec.ndp_cotizacion_dolar}"
             )
             # Log si se usa el fallback
-            if not rate or not rate.rate or rate.rate <= 0:
+            if (
+                not rate
+                or not rate.inverse_company_rate
+                or rate.inverse_company_rate <= 0
+            ):
                 _logger.warning(
                     f"No se encontró una tasa válida para USD en la compañía {rec.company_id.name}. "
                     f"Usando valor por defecto: 1.0"
