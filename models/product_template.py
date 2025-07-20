@@ -1,127 +1,100 @@
-import csv
-import io
-import base64
+# models/product_template.py
 from odoo import models, fields, api
 
 
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
-    # Campos personalizados para "DATOS NOTA DE PEDIDO"
-    np_rubro = fields.Integer(string="Rubro")
-    np_nombre_rubro = fields.Char(string="Nombre del Rubro")
-    np_familia = fields.Char(string="Familia")
-    np_codigo_area = fields.Integer(string="Código de Área")
-    np_nombre_area = fields.Char(string="Nombre del Área")
-    np_precio_publico_moneda = fields.Float(string="Precio Público según Moneda")
-    np_precio_mayorista_moneda = fields.Float(string="Precio Mayorista según Moneda")
-    np_porcentaje_iva = fields.Float(
-        string="% de IVA", default=21.0
-    )  # Ej. 21% por defecto
-    np_unidad_medida = fields.Char(string="Unidad de Medida", default="UN")
-    np_nombre_foto = fields.Char(string="Nombre Archivo de Foto")
-    np_codigo_barra = fields.Char(
-        string="Código de Barra"
-    )  # Usa barcode si prefieres el estándar
-    np_moneda = fields.Char(string="Moneda", default="DO")  # Ej. 'DO' para dólar
-    np_precio_publico_dolar = fields.Float(
-        string="Precio Público $", compute="_compute_precios_dolar", store=True
+    # Campos NDP (prefijo ndp_ para evitar conflictos)
+    ndp_rubro = fields.Char(string="Rubro")
+    ndp_nombre_rubro = fields.Char(string="Nombre del Rubro")
+    ndp_sku = fields.Char(string="SKU (Código SIEL)", required=True)  # Clave para match
+    ndp_nombre_producto = fields.Char(
+        string="Nombre Producto", compute="_compute_nombre_producto", store=True
     )
-    np_precio_mayorista_dolar = fields.Float(
-        string="Precio Mayorista $", compute="_compute_precios_dolar", store=True
+    ndp_familia = fields.Char(string="Familia")
+    ndp_codigo_area = fields.Char(string="Código de Área")
+    ndp_nombre_area = fields.Char(string="Nombre del Área")
+    ndp_precio_publico_moneda = fields.Float(
+        string="Precio Público (Moneda)", compute="_compute_precios"
     )
-    np_cotizacion = fields.Float(
-        string="Cotización", default=1280.0
-    )  # Ej. cotización fija, ajusta a un campo global si necesitas
-    np_costo = fields.Float(
-        string="Costo", related="standard_price"
-    )  # Relacionado con costo estándar
-    np_pto_pedido = fields.Float(string="Pto Pedido")
-    np_url_web = fields.Char(string="URL Web")
-    np_ultimo_cambio_costo = fields.Date(string="Último Cambio Costo")
-    np_observaciones = fields.Text(string="Observaciones")
+    ndp_precio_mayorista_moneda = fields.Float(
+        string="Precio Mayorista (Moneda)", compute="_compute_precios"
+    )
+    ndp_iva_porcentaje = fields.Float(
+        string="% IVA", related="taxes_id.amount", store=True
+    )  # De taxes
+    ndp_unidad_medida = fields.Char(string="Unidad de Medida", related="uom_id.name")
+    ndp_nombre_foto = fields.Char(string="Nombre Archivo Foto")
+    ndp_codigo_barra = fields.Char(string="Código Barra", related="barcode")
+    ndp_moneda = fields.Selection(
+        [("DO", "Dólar"), ("PE", "Pesos")], string="Moneda", default="PE"
+    )
+    ndp_precio_publico_pesos = fields.Float(
+        string="Precio Público $", compute="_compute_precios_pesos"
+    )
+    ndp_precio_mayorista_pesos = fields.Float(
+        string="Precio Mayorista $", compute="_compute_precios_pesos"
+    )
+    ndp_cotizacion_dolar = fields.Float(
+        string="Cotización Dólar", compute="_compute_cotizacion_dolar"
+    )
+    ndp_stock = fields.Float(string="Stock", compute="_compute_stock")
+    ndp_costo = fields.Float(string="Costo", related="standard_price")
+    ndp_pto_pedido = fields.Float(string="Pto Pedido", related="reordering_min_qty")
+    ndp_url_web = fields.Char(string="URL Web")
+    ndp_ultimo_cambio_costo = fields.Date(string="Último Cambio Costo")
+    ndp_observaciones = fields.Text(string="Observaciones")
+
+    @api.depends("name")
+    def _compute_nombre_producto(self):
+        for rec in self:
+            rec.ndp_nombre_producto = rec.name
 
     @api.depends(
-        "np_precio_publico_moneda",
-        "np_precio_mayorista_moneda",
-        "np_cotizacion",
-        "np_moneda",
+        "list_price", "pricelist_id"
+    )  # Asumí listas: public = list_price, mayorista = otra pricelist
+    def _compute_precios(self):
+        mayorista_pricelist = self.env.ref(
+            "tu_modulo.pricelist_mayorista"
+        )  # Reemplazá por tu ref
+        for rec in self:
+            rec.ndp_precio_publico_moneda = rec.list_price
+            rec.ndp_precio_mayorista_moneda = mayorista_pricelist._get_product_price(
+                rec, 1.0
+            )
+
+    @api.depends(
+        "ndp_precio_publico_moneda",
+        "ndp_precio_mayorista_moneda",
+        "ndp_moneda",
+        "ndp_cotizacion_dolar",
     )
-    def _compute_precios_dolar(self):
-        for product in self:
-            if product.np_moneda == "DO":  # Si ya en dólar, multiplica por cotización
-                product.np_precio_publico_dolar = (
-                    product.np_precio_publico_moneda * product.np_cotizacion
-                )
-                product.np_precio_mayorista_dolar = (
-                    product.np_precio_mayorista_moneda * product.np_cotizacion
-                )
-            else:  # Asume conversión simple; ajusta lógica real
-                product.np_precio_publico_dolar = product.np_precio_publico_moneda
-                product.np_precio_mayorista_dolar = product.np_precio_mayorista_moneda
+    def _compute_precios_pesos(self):
+        for rec in self:
+            dolar = rec.ndp_cotizacion_dolar
+            if rec.ndp_moneda == "DO":
+                rec.ndp_precio_publico_pesos = rec.ndp_precio_publico_moneda * dolar
+                rec.ndp_precio_mayorista_pesos = rec.ndp_precio_mayorista_moneda * dolar
+            else:
+                rec.ndp_precio_publico_pesos = rec.ndp_precio_publico_moneda
+                rec.ndp_precio_mayorista_pesos = rec.ndp_precio_mayorista_moneda
 
-    def export_products_to_csv(self):
-        output = io.StringIO()
-        writer = csv.writer(
-            output,
-            delimiter="|",
-            lineterminator="\n",
-            quoting=csv.QUOTE_NONE,
-            escapechar="\\",
+    @api.depends_context("company")
+    def _compute_cotizacion_dolar(self):
+        usd = self.env.ref("base.USD")
+        ars = self.env.ref("base.ARS")
+        rate = self.env["res.currency.rate"].search(
+            [("currency_id", "=", usd.id)], limit=1, order="name desc"
         )
+        for rec in self:
+            rec.ndp_cotizacion_dolar = (
+                rate.rate if rate else 1.0
+            )  # O fallback a API externa si querés
 
-        # Obtener productos (filtra según necesidad, ej. solo activos)
-        products = self.search(
-            [("detailed_type", "=", "product")]
-        )  # Ej. solo storables
-
-        for product in products:
-            row = [
-                product.np_rubro or "",  # 1 rubro
-                product.np_nombre_rubro or "",  # 2 nombre del rubro
-                product.default_code or "",  # 3 sku
-                product.name or "",  # 4 nombre producto
-                product.np_familia or "",  # 5 FAMILIA
-                product.np_codigo_area or "",  # 6 codigo de Area
-                product.np_nombre_area or "",  # 7 nombre del Area
-                product.np_precio_publico_moneda or "",  # 8 precio publico segun moneda
-                product.np_precio_mayorista_moneda or "",  # 9 precio mayorista
-                product.np_porcentaje_iva or "",  # 10 % de IVA
-                product.np_unidad_medida or "",  # 11 unidad de medida
-                product.np_nombre_foto or "",  # 12 nombre archivo de foto
-                product.np_codigo_barra or "",  # 13 codigo barra
-                product.np_moneda or "",  # 14 MONEDA
-                product.np_precio_publico_dolar or "",  # 15 precio publico $
-                product.np_precio_mayorista_dolar or "",  # 16 precio mayorista $
-                product.np_cotizacion or "",  # 17 COTIZACION
-                product.qty_available or "",  # 18 STOCK (stock disponible)
-                product.np_costo or "",  # 19 costo
-                product.np_pto_pedido or "",  # 20 pto pedido
-                product.np_url_web or "",  # 21 url web
-                product.np_ultimo_cambio_costo.strftime("%d/%m/%y")
-                if product.np_ultimo_cambio_costo
-                else "",  # 22 ultimo cambio costo (formato dd/mm/yy)
-                product.np_observaciones or "",  # 23 observaciones
-            ]
-            writer.writerow(row)
-
-        csv_content = output.getvalue().encode("utf-8")
-        output.close()
-
-        # Crear attachment para descarga
-        attachment = self.env["ir.attachment"].create(
-            {
-                "name": "productos_nota_pedido.csv",
-                "type": "binary",
-                "datas": base64.b64encode(csv_content),
-                "res_model": "product.template",
-                "res_id": 0,
-                "mimetype": "text/csv",
-            }
-        )
-
-        return {
-            "type": "ir.actions.act_url",
-            "url": f"/web/content/?model=ir.attachment&id={attachment.id}&field=datas&filename_field=name&download=true",
-            "target": "self",
-        }
+    @api.depends("qty_available")
+    def _compute_stock(self):
+        for rec in self:
+            rec.ndp_stock = (
+                rec.qty_available
+            )  # O usa stock.quant para warehouse específico

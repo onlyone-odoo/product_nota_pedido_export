@@ -1,0 +1,45 @@
+<!-- views/product_views.xml -->
+<odoo>
+    <record id="view_product_template_form_inherit_ndp" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.ndp</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <notebook position="inside">
+                <page string="NDP Integration">
+                    <group name="ndp_general" string="Información General">
+                        <field name="ndp_rubro"/>
+                        <field name="ndp_nombre_rubro"/>
+                        <field name="ndp_sku"/>
+                        <field name="ndp_nombre_producto" readonly="1"/>
+                        <field name="ndp_familia"/>
+                        <field name="ndp_codigo_area"/>
+                        <field name="ndp_nombre_area"/>
+                    </group>
+                    <group name="ndp_precios" string="Precios y Moneda">
+                        <field name="ndp_precio_publico_moneda" readonly="1"/>
+                        <field name="ndp_precio_mayorista_moneda" readonly="1"/>
+                        <field name="ndp_iva_porcentaje" readonly="1"/>
+                        <field name="ndp_unidad_medida" readonly="1"/>
+                        <field name="ndp_moneda"/>
+                        <field name="ndp_precio_publico_pesos" readonly="1"/>
+                        <field name="ndp_precio_mayorista_pesos" readonly="1"/>
+                        <field name="ndp_cotizacion_dolar" readonly="1"/>
+                    </group>
+                    <group name="ndp_stock" string="Stock y Costos">
+                        <field name="ndp_stock" readonly="1"/>
+                        <field name="ndp_costo" readonly="1"/>
+                        <field name="ndp_pto_pedido" readonly="1"/>
+                    </group>
+                    <group name="ndp_media" string="Media y Observaciones">
+                        <field name="ndp_nombre_foto"/>
+                        <field name="ndp_codigo_barra" readonly="1"/>
+                        <field name="ndp_url_web"/>
+                        <field name="ndp_ultimo_cambio_costo"/>
+                        <field name="ndp_observaciones"/>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+</odoo>
