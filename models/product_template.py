@@ -54,29 +54,47 @@ class ProductTemplate(models.Model):
     @api.depends(
         "list_price",
     )
-
+    @api.depends("list_price")
     def _compute_precios(self):
-        publico_pricelist_usd = self.env["product.pricelist"].search([("name", "=", "Precio Minorista USD"), ('company_id', '=', self.env.company.id)])
-        mayorista_pricelist_usd = self.env.["product.pricelist"].search([("name", "=", "Precio Mayorista USD"), ('company_id', '=', self.env.company.id)])
-        publico_pricelist = self.env.["product.pricelist"].search([("name","=",
-            "Precio Minorista ARS"), ('company_id', '=', self.env.company.id)])
-        mayorista_pricelist = self.env.["product.pricelist"].search([("name","=",
-            "Precio Mayorista ARS"), ('company_id', '=', self.env.company.id)])
+        publico_pricelist_usd = self.env["product.pricelist"].search(
+            [
+                ("name", "=", "Precio Minorista USD"),
+                ("company_id", "=", self.env.company.id),
+            ]
+        )
+        mayorista_pricelist_usd = self.env["product.pricelist"].search(
+            [
+                ("name", "=", "Precio Mayorista USD"),
+                ("company_id", "=", self.env.company.id),
+            ]
+        )
+        publico_pricelist = self.env["product.pricelist"].search(
+            [
+                ("name", "=", "Precio Minorista ARS"),
+                ("company_id", "=", self.env.company.id),
+            ]
+        )
+        mayorista_pricelist = self.env["product.pricelist"].search(
+            [
+                ("name", "=", "Precio Mayorista ARS"),
+                ("company_id", "=", self.env.company.id),
+            ]
+        )
 
         for rec in self:
             if rec.ndp_moneda == "DO":
-                rec.ndp_precio_publico_moneda = publico_pricelist_usd._get_product_price(
-                    rec, 1.0
+                rec.ndp_precio_publico_moneda = (
+                    publico_pricelist_usd._get_product_price(rec, 1.0)
                 )
-                rec.ndp_precio_mayorista_moneda = mayorista_pricelist_usd._get_product_price(
-                    rec, 1.0
+                rec.ndp_precio_mayorista_moneda = (
+                    mayorista_pricelist_usd._get_product_price(rec, 1.0)
                 )
             else:
                 rec.ndp_precio_publico_moneda = publico_pricelist._get_product_price(
                     rec, 1.0
                 )
-                rec.ndp_precio_mayorista_moneda = mayorista_pricelist._get_product_price(
-                    rec, 1.0
+                rec.ndp_precio_mayorista_moneda = (
+                    mayorista_pricelist._get_product_price(rec, 1.0)
                 )
 
     @api.depends(
@@ -86,12 +104,31 @@ class ProductTemplate(models.Model):
         "ndp_cotizacion_dolar",
     )
     def _compute_precios_pesos(self):
-        publico_pricelist_usd = self.env["product.pricelist"].search([("name", "=", "Precio Minorista USD"), ('company_id', '=', self.env.company.id)])
-        mayorista_pricelist_usd = self.env.["product.pricelist"].search([("name", "=", "Precio Mayorista USD"), ('company_id', '=', self.env.company.id)])
-        publico_pricelist = self.env.["product.pricelist"].search([("name","=",
-            "Precio Minorista ARS"), ('company_id', '=', self.env.company.id)])
-        mayorista_pricelist = self.env.["product.pricelist"].search([("name","=",
-            "Precio Mayorista ARS"), ('company_id', '=', self.env.company.id)])
+        publico_pricelist_usd = self.env["product.pricelist"].search(
+            [
+                ("name", "=", "Precio Minorista USD"),
+                ("company_id", "=", self.env.company.id),
+            ]
+        )
+        mayorista_pricelist_usd = self.env["product.pricelist"].search(
+            [
+                ("name", "=", "Precio Mayorista USD"),
+                ("company_id", "=", self.env.company.id),
+            ]
+        )
+        publico_pricelist = self.env["product.pricelist"].search(
+            [
+                ("name", "=", "Precio Minorista ARS"),
+                ("company_id", "=", self.env.company.id),
+            ]
+        )
+        mayorista_pricelist = self.env["product.pricelist"].search(
+            [
+                ("name", "=", "Precio Mayorista ARS"),
+                ("company_id", "=", self.env.company.id),
+            ]
+        )
+
         for rec in self:
             if rec.ndp_moneda == "DO":
                 rec.ndp_precio_publico_pesos = publico_pricelist._get_product_price(
@@ -109,7 +146,9 @@ class ProductTemplate(models.Model):
         usd = self.env.ref("base.USD")
         ars = self.env.ref("base.ARS")
         rate = self.env["res.currency.rate"].search(
-            [("currency_id", "=", usd.id)], limit=1, order="name desc"
+            [("currency_id", "=", usd.id), ("company_id", "=", self.env.company.id)],
+            limit=1,
+            order="name desc",
         )
         for rec in self:
             rec.ndp_cotizacion_dolar = (
