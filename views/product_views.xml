@@ -1,9 +1,9 @@
 <!-- views/product_views.xml -->
 <odoo>
-    <record id="view_product_template_form_inherit_ndp" model="ir.ui.view">
-        <field name="name">product.template.form.inherit.ndp</field>
-        <field name="model">product.template</field>
-        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+    <record id="view_product_product_form_inherit_ndp" model="ir.ui.view">
+        <field name="name">product.product.form.inherit.ndp</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_product_form_view"/>
         <field name="arch" type="xml">
             <notebook position="inside">
                 <page string="NDP Integration">

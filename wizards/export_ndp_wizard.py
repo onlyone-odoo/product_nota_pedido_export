@@ -1,4 +1,5 @@
-from odoo import models, fields, api
+# wizards/export_ndp_wizard.py
+from odoo import models, fields
 import csv
 import io
 import base64
@@ -7,31 +8,23 @@ import base64
 class ExportNDPWizard(models.TransientModel):
     _name = "export.ndp.wizard"
 
-    product_ids = fields.Many2many("product.template", string="Productos a Exportar")
-    datas = fields.Binary(
-        string="CSV Data", attachment=True
-    )  # Campo temporal para el CSV
+    product_ids = fields.Many2many("product.product", string="Productos a Exportar")
+    datas = fields.Binary(string="CSV Data", attachment=True)
 
     def generate_csv(self):
-        # Mapeo de unidades de medida de Odoo a códigos NDP
         uom_mapping = {
             "Unidades": "UN",
-            "Unidad": "UN",
-            # Agrega más mapeos si hay otras unidades en el sistema
+            "Unidad": "UNI",
         }
-
-        # Forzar recomputo de campos computados para productos seleccionados
         for product in self.product_ids:
             product._compute_nombre_producto()
             product._compute_precios()
             product._compute_precios_pesos()
             product._compute_cotizacion_dolar()
             product._compute_stock()
-
         output = io.StringIO()
         writer = csv.writer(output, delimiter="|")
         for product in self.product_ids:
-            # Mapear unidad de medida
             unidad_medida = (
                 uom_mapping.get(product.ndp_unidad_medida, product.ndp_unidad_medida)
                 or ""
@@ -41,7 +34,6 @@ class ExportNDPWizard(models.TransientModel):
                 if product.ndp_codigo_barra and product.ndp_codigo_barra != "0"
                 else ""
             )
-
             writer.writerow(
                 [
                     product.ndp_rubro or "",

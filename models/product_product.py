@@ -1,12 +1,12 @@
-# models/product_template.py
+# models/product_product.py
 from odoo import models, fields, api
 import logging
 
 _logger = logging.getLogger(__name__)
 
 
-class ProductTemplate(models.Model):
-    _inherit = "product.template"
+class ProductProduct(models.Model):
+    _inherit = "product.product"
 
     # Campos NDP (prefijo ndp_ para evitar conflictos)
     ndp_rubro = fields.Char(string="Rubro")
@@ -25,8 +25,8 @@ class ProductTemplate(models.Model):
         string="Precio Mayorista (Moneda)", compute="_compute_precios", store=True
     )
     ndp_iva_porcentaje = fields.Float(
-        string="% IVA", related="taxes_id.amount", store=True
-    )  # De taxes
+        string="% IVA", compute="_compute_iva_porcentaje", store=True
+    )
     ndp_unidad_medida = fields.Char(string="Unidad de Medida", related="uom_id.name")
     ndp_nombre_foto = fields.Char(string="Nombre Archivo Foto")
     ndp_codigo_barra = fields.Char(string="Código Barra", related="barcode")
@@ -57,7 +57,6 @@ class ProductTemplate(models.Model):
     @api.depends("list_price")
     def _compute_precios(self):
         for rec in self:
-            # Buscar listas de precios con limit=1 para asegurar singleton
             publico_pricelist_usd = self.env["product.pricelist"].search(
                 [
                     ("name", "=", "Precio Minorista USD"),
@@ -86,15 +85,12 @@ class ProductTemplate(models.Model):
                 ],
                 limit=1,
             )
-
-            # Log para debuggear listas encontradas
             _logger.info(
                 f"Compañía {rec.company_id.name}: publico_usd={publico_pricelist_usd.name}, "
                 f"mayorista_usd={mayorista_pricelist_usd.name}, "
                 f"publico_ars={publico_pricelist.name}, "
                 f"mayorista_ars={mayorista_pricelist.name}"
             )
-
             if rec.ndp_moneda == "DO":
                 rec.ndp_precio_publico_moneda = (
                     publico_pricelist_usd._get_product_price(rec, 1.0)
@@ -118,6 +114,12 @@ class ProductTemplate(models.Model):
                     else rec.list_price
                 )
 
+    @api.depends("taxes_id")
+    def _compute_iva_porcentaje(self):
+        for rec in self:
+            tax = rec.taxes_id[:1]
+            rec.ndp_iva_porcentaje = tax.amount if tax else 0.0
+
     @api.depends(
         "ndp_precio_publico_moneda",
         "ndp_precio_mayorista_moneda",
@@ -137,56 +139,39 @@ class ProductTemplate(models.Model):
                 rec.ndp_precio_publico_pesos = rec.ndp_precio_publico_moneda
                 rec.ndp_precio_mayorista_pesos = rec.ndp_precio_mayorista_moneda
 
+    @api.depends_context("company")
     @api.depends("company_id")
     def _compute_cotizacion_dolar(self):
-        _logger.info(
-            f"Se esta ejecutando _compute_cotizacion_dolar esto es self: {self}"
-        )
         usd = self.env.ref("base.USD")
-        _logger.info(f"Se esta ejecutando _compute_cotizacion_dolar esto es usd: {usd}")
         ars = self.env.ref("base.ARS")
-        _logger.info(f"Se esta ejecutando _compute_cotizacion_dolar esto es ars: {ars}")
         for rec in self:
-            # Buscar la tasa para la compañía del registro
             rate = self.env["res.currency.rate"].search(
-                [("currency_id", "=", usd.id), ("company_id", "=", rec.company_id.id)],
+                [
+                    ("currency_id", "=", usd.id),
+                    ("company_id", "in", (False, rec.company_id.id)),
+                ],
                 limit=1,
                 order="name desc",
             )
-            _logger.info(
-                f"Se esta ejecutando _compute_cotizacion_dolar esto es rate: {rate}"
-            )
-            if rate:
-                _logger.info(
-                    f"Valor de rate.rate: {rate.rate}, inverse_company_rate: {rate.inverse_company_rate}"
-                )
-            # Determinar el valor a asignar usando inverse_company_rate
             new_value = (
                 rate.inverse_company_rate
-                if rate and rate.inverse_company_rate and rate.inverse_company_rate > 0
+                if rate and rate.inverse_company_rate > 0
                 else 1.0
             )
-            _logger.info(f"Asignando ndp_cotizacion_dolar para {rec.id}: {new_value}")
-            # Forzar la escritura del valor
-            rec.ndp_cotizacion_dolar = new_value
-            # Verificar si el valor se escribió correctamente
             _logger.info(
-                f"Valor final de ndp_cotizacion_dolar para {rec.id}: {rec.ndp_cotizacion_dolar}"
+                f"Cotización USD para compañía {rec.company_id.name} (ID {rec.company_id.id}): {new_value}"
             )
-            # Log si se usa el fallback
+            rec.ndp_cotizacion_dolar = new_value
             if (
                 not rate
                 or not rate.inverse_company_rate
                 or rate.inverse_company_rate <= 0
             ):
                 _logger.warning(
-                    f"No se encontró una tasa válida para USD en la compañía {rec.company_id.name}. "
-                    f"Usando valor por defecto: 1.0"
+                    f"No se encontró tasa válida para USD en compañía {rec.company_id.name}. Usando 1.0"
                 )
 
     @api.depends("qty_available")
     def _compute_stock(self):
         for rec in self:
-            rec.ndp_stock = (
-                rec.qty_available
-            )  # O usa stock.quant para warehouse específico
+            rec.ndp_stock = rec.qty_available
