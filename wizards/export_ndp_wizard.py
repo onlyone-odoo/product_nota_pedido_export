@@ -34,6 +34,12 @@ class ExportNDPWizard(models.TransientModel):
                 if product.ndp_codigo_barra and product.ndp_codigo_barra != "0"
                 else ""
             )
+            # Formatear la fecha como DD/MM/YY
+            fecha_cambio_costo = (
+                product.ndp_ultimo_cambio_costo.strftime("%d/%m/%y")
+                if product.ndp_ultimo_cambio_costo
+                else ""
+            )
             writer.writerow(
                 [
                     product.ndp_rubro or "",
