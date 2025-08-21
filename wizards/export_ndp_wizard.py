@@ -17,10 +17,10 @@ class ExportNDPWizard(models.TransientModel):
             "Unidad": "UNI",
         }
         for product in self.product_ids:
+            product._compute_cotizacion_dolar()
             product._compute_nombre_producto()
             product._compute_precios()
             product._compute_precios_pesos()
-            product._compute_cotizacion_dolar()
             product._compute_stock()
         output = io.StringIO()
         writer = csv.writer(output, delimiter="|")
@@ -34,6 +34,11 @@ class ExportNDPWizard(models.TransientModel):
                 if product.ndp_codigo_barra and product.ndp_codigo_barra != "0"
                 else ""
             )
+            if product.ndp_moneda == "DO" and product.ndp_cotizacion_dolar is not None:
+                ndp_cotizacion_dolar_exportar = product.ndp_cotizacion_dolar
+            else product.ndp_moneda == "PE":
+                ndp_cotizacion_dolar_exportar = 1
+
             # Formatear la fecha como DD/MM/YY
             fecha_cambio_costo = (
                 product.ndp_ultimo_cambio_costo.strftime("%d/%m/%y")
@@ -58,13 +63,14 @@ class ExportNDPWizard(models.TransientModel):
                     product.ndp_moneda or "",
                     f"{product.ndp_precio_publico_pesos:.3f}",
                     f"{product.ndp_precio_mayorista_pesos:.3f}",
-                    f"{product.ndp_cotizacion_dolar:.3f}",
+                    f"{ndp_cotizacion_dolar_exportar:.3f}"
                     f"{product.ndp_stock:.0f}",
                     f"{product.ndp_costo:.3f}",
                     f"{product.ndp_pto_pedido:.3f}",
                     product.ndp_url_web or "",
                     product.ndp_ultimo_cambio_costo or "",
                     product.ndp_observaciones or "",
+                    "",
                 ]
             )
         data = output.getvalue().encode("utf-8")
