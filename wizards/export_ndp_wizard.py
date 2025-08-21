@@ -7,6 +7,7 @@ import base64
 
 class ExportNDPWizard(models.TransientModel):
     _name = "export.ndp.wizard"
+    _description = "Wizard para exportar productos a CSV"
 
     product_ids = fields.Many2many("product.product", string="Productos a Exportar")
     datas = fields.Binary(string="CSV Data", attachment=True)
@@ -34,11 +35,15 @@ class ExportNDPWizard(models.TransientModel):
                 if product.ndp_codigo_barra and product.ndp_codigo_barra != "0"
                 else ""
             )
-            if product.ndp_moneda == "DO" and product.ndp_cotizacion_dolar is not None:
-                ndp_cotizacion_dolar_exportar = product.ndp_cotizacion_dolar
-            else product.ndp_moneda == "PE":
-                ndp_cotizacion_dolar_exportar = 1
-
+            # Lógica ajustada para la cotización en dólares
+            ndp_cotizacion_dolar_exportar = (
+                product.ndp_cotizacion_dolar
+                if product.ndp_moneda == "DO"
+                and product.ndp_cotizacion_dolar is not None
+                else 1
+                if product.ndp_moneda == "PE"
+                else 0
+            )
             # Formatear la fecha como DD/MM/YY
             fecha_cambio_costo = (
                 product.ndp_ultimo_cambio_costo.strftime("%d/%m/%y")
@@ -63,12 +68,12 @@ class ExportNDPWizard(models.TransientModel):
                     product.ndp_moneda or "",
                     f"{product.ndp_precio_publico_pesos:.3f}",
                     f"{product.ndp_precio_mayorista_pesos:.3f}",
-                    f"{ndp_cotizacion_dolar_exportar:.3f}"
+                    f"{ndp_cotizacion_dolar_exportar:.3f}",  # Formateo consistente
                     f"{product.ndp_stock:.0f}",
                     f"{product.ndp_costo:.3f}",
                     f"{product.ndp_pto_pedido:.3f}",
                     product.ndp_url_web or "",
-                    product.ndp_ultimo_cambio_costo or "",
+                    fecha_cambio_costo,
                     product.ndp_observaciones or "",
                     "",
                 ]
@@ -77,7 +82,7 @@ class ExportNDPWizard(models.TransientModel):
         self.datas = base64.b64encode(data)
         return {
             "type": "ir.actions.act_url",
-            "url": "/web/content/?model=%s&id=%s&field=datas&download=true&filename=ndp_export.csv"
+            "url": "/web/content/?model=%s&id=%s&field=datas&download=true&filename=prodlis2.csv"
             % (self._name, self.id),
             "target": "self",
         }
