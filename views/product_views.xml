@@ -1,6 +1,6 @@
 <!-- views/product_views.xml -->
 <odoo>
-    <record id="view_product_product_form_inherit_ndp" model="ir.ui.view">
+    <record id="view_product_product_form_inherit_ndp" model="ir.ui.view" priority="100">
         <field name="name">product.product.form.inherit.ndp</field>
         <field name="model">product.product</field>
         <field name="inherit_id" ref="product.product_normal_form_view"/>
