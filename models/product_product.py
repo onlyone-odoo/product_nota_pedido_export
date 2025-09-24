@@ -114,11 +114,17 @@ class ProductProduct(models.Model):
                     else rec.list_price
                 )
 
-    @api.depends("taxes_id")
+    @api.depends("taxes_id", "company_id")
     def _compute_iva_porcentaje(self):
         for rec in self:
-            tax = rec.taxes_id[:1]
+            # Usar la compañía especificada para precios, o la del producto si no está seteada
+            company_id = rec.company_id.id or 4
+            # Filtrar impuestos por la compañía seleccionada
+            tax = rec.taxes_id.filtered(lambda t: t.company_id.id == company_id)[:1]
             rec.ndp_iva_porcentaje = tax.amount if tax else 0.0
+            _logger.info(
+                f"IVA para producto {rec.name} (compañía {company_id}): {rec.company_id}"
+            )
 
     @api.depends(
         "ndp_precio_publico_moneda",
