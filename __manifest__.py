@@ -8,7 +8,7 @@
     "website": "https://onlyone.odoo.com/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "17.0.7.5.0",
+    "version": "17.0.7.5.1",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
@@ -18,6 +18,7 @@
         "account",
         "product_replenishment_cost",
         "pricelist_replenishment_cost",
+        "product_approval_management",
     ],
     "data": [
         "views/product_views.xml",
