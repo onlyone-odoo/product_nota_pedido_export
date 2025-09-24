@@ -18,7 +18,6 @@
         "account",
         "product_replenishment_cost",
         "pricelist_replenishment_cost",
-        "product_approval_management",
     ],
     "data": [
         "views/product_views.xml",
