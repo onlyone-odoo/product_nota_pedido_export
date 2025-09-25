@@ -177,7 +177,26 @@ class ProductProduct(models.Model):
                     f"No se encontró tasa válida para USD en compañía {rec.company_id.name}. Usando 1.0"
                 )
 
-    @api.depends("qty_available")
+    @api.depends("qty_available", "company_id")
     def _compute_stock(self):
+        """Compute stock quantity based on company and warehouse rules.
+
+        For company with ID 4, use stock from warehouse ID 15.
+        For other companies, use the global available quantity (qty_available).
+        """
+        warehouse = self.env["stock.warehouse"].browse(15)
         for rec in self:
-            rec.ndp_stock = rec.qty_available
+            if (
+                rec.company_id.id == 4
+                and warehouse.exists()
+                and warehouse.company_id.id == 4
+            ):
+                # Get stock for specific warehouse (ID 15) for company ID 4
+                rec.ndp_stock = self.env["stock.quant"]._get_available_quantity(
+                    rec,
+                    warehouse.lot_stock_id,  # Main stock location of warehouse
+                    allow_negative=True,  # Include negative stock if applicable
+                )
+            else:
+                # Use standard qty_available for other companies
+                rec.ndp_stock = rec.qty_available

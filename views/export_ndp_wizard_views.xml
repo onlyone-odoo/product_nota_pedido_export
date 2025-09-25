@@ -6,7 +6,8 @@
         <field name="arch" type="xml">
             <form string="Exportar CSV para NDP">
                 <group>
-                    <field name="product_ids" widget="many2many_tags" domain="[('type', '!=', 'service')]"/>
+                    <!--<field name="product_ids" widget="many2many_tags" domain="[('type', '!=', 'service')]"/>-->
+                    <field name="product_ids" widget="many2many_tags"/>
                 </group>
                 <footer>
                     <button name="generate_csv" string="Generar CSV" type="object" class="btn-primary"/>

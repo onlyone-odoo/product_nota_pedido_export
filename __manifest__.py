@@ -8,7 +8,7 @@
     "website": "https://onlyone.odoo.com/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "17.0.7.5.1",
+    "version": "17.0.8.6.1",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
