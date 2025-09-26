@@ -23,6 +23,7 @@ class ExportNDPWizard(models.TransientModel):
             product._compute_precios()
             product._compute_precios_pesos()
             product._compute_stock()
+            product._compute_iva_porcentaje()
         output = io.StringIO()
         writer = csv.writer(output, delimiter="|")
         for product in self.product_ids:
