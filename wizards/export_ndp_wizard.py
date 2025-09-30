@@ -1,4 +1,3 @@
-# wizards/export_ndp_wizard.py
 from odoo import models, fields
 import csv
 import io
@@ -13,6 +12,7 @@ class ExportNDPWizard(models.TransientModel):
     datas = fields.Binary(string="CSV Data", attachment=True)
 
     def generate_csv(self):
+        """Generate a CSV file with product data for export."""
         uom_mapping = {
             "Unidades": "UN",
             "Unidad": "UNI",
@@ -51,6 +51,12 @@ class ExportNDPWizard(models.TransientModel):
                 if product.ndp_ultimo_cambio_costo
                 else ""
             )
+            # Format IVA percentage: integer if whole number, one decimal otherwise
+            iva_porcentaje = (
+                f"{int(product.ndp_iva_porcentaje)}"
+                if product.ndp_iva_porcentaje.is_integer()
+                else f"{product.ndp_iva_porcentaje:.1f}"
+            )
             writer.writerow(
                 [
                     product.ndp_rubro or "",
@@ -62,7 +68,7 @@ class ExportNDPWizard(models.TransientModel):
                     product.ndp_nombre_area or "",
                     f"{product.ndp_precio_publico_moneda:.3f}",
                     f"{product.ndp_precio_mayorista_moneda:.3f}",
-                    f"{product.ndp_iva_porcentaje:.0f}",
+                    iva_porcentaje,
                     unidad_medida,
                     product.ndp_nombre_foto or "",
                     codigo_barra,
