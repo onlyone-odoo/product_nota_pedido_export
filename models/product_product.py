@@ -25,7 +25,11 @@ class ProductProduct(models.Model):
         string="Precio Mayorista (Moneda)", compute="_compute_precios", store=True
     )
     ndp_iva_porcentaje = fields.Float(
-        string="% IVA", compute="_compute_iva_porcentaje", store=True
+        string="% IVA",
+        compute="_compute_iva_porcentaje",
+        store=True,
+        digits=(12, 2),  # Precision: 12 digits total, 2 decimales
+        help="Percentage of IVA (VAT) based on the product's taxes and company.",
     )
     ndp_unidad_medida = fields.Char(string="Unidad de Medida", related="uom_id.name")
     ndp_nombre_foto = fields.Char(string="Nombre Archivo Foto")
@@ -116,14 +120,16 @@ class ProductProduct(models.Model):
 
     @api.depends("taxes_id", "company_id")
     def _compute_iva_porcentaje(self):
+        """Compute the IVA percentage based on the product's taxes and company."""
         for rec in self:
-            # Usar la compañía especificada para precios, o la del producto si no está seteada
+            # Use the specified company or default to company ID 4
             company_id = rec.company_id.id or 4
-            # Filtrar impuestos por la compañía seleccionada
+            # Filter taxes by the selected company and get the first one
             tax = rec.taxes_id.filtered(lambda t: t.company_id.id == company_id)[:1]
+            # Store the tax amount with full precision (e.g., 21.0 or 10.5)
             rec.ndp_iva_porcentaje = tax.amount if tax else 0.0
             _logger.info(
-                f"IVA para producto {rec.name} (compañía {company_id}): {rec.company_id}"
+                f"IVA for product {rec.name} (company {company_id}): {rec.ndp_iva_porcentaje}"
             )
 
     @api.depends(
